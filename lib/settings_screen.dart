@@ -13,8 +13,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedLanguage = 'Indonesia';
   
   // --- DATA PROFIL PENGGUNA (Bisa diubah nanti) ---
-  String _userName = 'Budi Santoso';
-  String _userEmail = 'budi.santoso@email.com';
+  String _userName = 'Chef Fadly Rizky';
+  String _userEmail = 'fadlyrizky@gmail.com';
   String _userPhone = '+62 812-3456-7890';
 
   // --- FUNGSI EDIT PROFIL (DENGAN FORM) ---
