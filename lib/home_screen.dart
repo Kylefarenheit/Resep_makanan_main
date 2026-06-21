@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'recipe_detail_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
