@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final String title;
@@ -13,20 +14,20 @@ class RecipeDetailScreen extends StatefulWidget {
   final String carbs;
   final String fat;
 
- const RecipeDetailScreen({
-  super.key,
-  required this.title,
-  required this.imgUrl,
-  this.ingredients = const [],
-  this.steps = const [],
-  this.rating = '4.8',
-  this.time = '30 Menit',
-  this.difficulty = 'Mudah',
-  this.calories = '350',
-  this.protein = '15g',
-  this.carbs = '25g',
-  this.fat = '10g',
-});
+  const RecipeDetailScreen({
+    super.key,
+    required this.title,
+    required this.imgUrl,
+    this.ingredients = const [],
+    this.steps = const [],
+    this.rating = '4.8',
+    this.time = '30 Menit',
+    this.difficulty = 'Mudah',
+    this.calories = '350',
+    this.protein = '15g',
+    this.carbs = '25g',
+    this.fat = '10g',
+  });
 
   @override
   State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
@@ -34,27 +35,129 @@ class RecipeDetailScreen extends StatefulWidget {
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   bool _isFavorite = false;
-  int _activeTab = 0; // 0 untuk Bahan, 1 untuk Langkah
-  int _porsiCount = 2; // Counter porsi interaktif
-
-  // 💡 State checklist sekarang fleksibel, diinisialisasi saat layar dibuka
+  int _activeTab = 0;
+  int _porsiCount = 2;
+  
+  double _userRating = 0.0;
+  bool _hasRated = false;
+  
+  final List<Map<String, dynamic>> _comments = [
+    {
+      'user': 'Chef Juna',
+      'avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=60',
+      'text': 'Resepnya mantap! Saya coba tadi dan hasilnya luar biasa 👏',
+      'time': '2 jam lalu',
+      'rating': 5,
+    },
+    {
+      'user': 'Sisca Soewitomo',
+      'avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=60',
+      'text': 'Bumbunya pas banget, keluarga suka semua!',
+      'time': '5 jam lalu',
+      'rating': 4,
+    },
+  ];
+  
+  final TextEditingController _commentController = TextEditingController();
+  
   late List<bool> _checkedIngredients;
+  bool _isChecklistSaved = false;
 
   @override
   void initState() {
     super.initState();
-    // Membuat jumlah checklist otomatis sama dengan jumlah bahan yang dikirim
     _checkedIngredients = List<bool>.filled(widget.ingredients.length, false);
+  }
+
+  void _saveProgress() {
+    setState(() {
+      _isChecklistSaved = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('💾 Progress bahan berhasil disimpan!'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _resetChecklist() {
+    setState(() {
+      _checkedIngredients = List<bool>.filled(widget.ingredients.length, false);
+      _isChecklistSaved = false;
+    });
+  }
+
+  // ✅ FUNGSI SHARE YANG SUDAH DIPERBAIKI
+  void _shareRecipe() {
+    String stepsText = '';
+    for (int i = 0; i < widget.steps.length; i++) {
+      stepsText += '${i + 1}. ${widget.steps[i]}\n';
+    }
+    
+    final String recipeText = '''
+🍳 *${widget.title}*
+
+⏱️ Waktu: ${widget.time}
+📊 Tingkat: ${widget.difficulty}
+⭐ Rating: ${widget.rating}
+
+📋 *Bahan-bahan:*
+${widget.ingredients.map((item) => '• $item').join('\n')}
+
+👨‍🍳 *Langkah Memasak:*
+$stepsText
+---
+Dibagikan dari Aplikasi Resep Nusantara 🇮🇩
+    ''';
+    
+    Share.share(
+      recipeText,
+      subject: '🍳 ${widget.title} - Resep Nusantara',
+    );
+  }
+
+  void _addComment() {
+    if (_commentController.text.trim().isEmpty) return;
+    
+    setState(() {
+      _comments.insert(0, {
+        'user': 'Chef Fadly Rizky',
+        'avatar': 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=60',
+        'text': _commentController.text.trim(),
+        'time': 'Baru saja',
+        'rating': _userRating > 0 ? _userRating.round() : null,
+      });
+      _commentController.clear();
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('💬 Komentar berhasil ditambahkan!'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalChecked = _checkedIngredients.where((v) => v).length;
+    final totalIngredients = widget.ingredients.length;
+    final progressPercentage = totalIngredients > 0 
+        ? totalChecked / totalIngredients 
+        : 0.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // 1. COLLAPSING HEADER (SLIVER APP BAR)
           SliverAppBar(
             expandedHeight: 380,
             elevation: 0,
@@ -76,6 +179,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 child: CircleAvatar(
                   backgroundColor: Colors.white.withOpacity(0.85),
                   child: IconButton(
+                    icon: const Icon(Icons.share_rounded, color: Colors.black87, size: 22),
+                    onPressed: _shareRecipe,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withOpacity(0.85),
+                  child: IconButton(
                     icon: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: Icon(
@@ -90,7 +203,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       });
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(_isFavorite ? 'Ditambahkan ke Koleksi ❤️' : 'Dihapus dari Koleksi'),
+                          content: Text(_isFavorite ? '❤️ Ditambahkan ke Koleksi' : '💔 Dihapus dari Koleksi'),
                           duration: const Duration(milliseconds: 800),
                         ),
                       );
@@ -127,8 +240,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               ),
             ),
           ),
-
-          // 2. KONTEN UTAMA DETAIL RESEP
           SliverList(
             delegate: SliverChildListDelegate([
               Padding(
@@ -136,7 +247,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // JUDUL RESEP PREMIUM (Dinamis)
                     Text(
                       widget.title,
                       style: const TextStyle(
@@ -147,20 +257,60 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // DETAIL INFO (Dinamis dari widget data)
                     Row(
                       children: [
-                        _buildHeaderMeta(Icons.star_rounded, Colors.amber, '${widget.rating} (Ulasan)'),
+                        _buildHeaderMeta(Icons.star_rounded, Colors.amber, '${widget.rating} (${_comments.length} Ulasan)'),
                         const SizedBox(width: 15),
                         _buildHeaderMeta(Icons.schedule_rounded, Colors.grey.shade600, widget.time),
                         const SizedBox(width: 15),
                         _buildHeaderMeta(Icons.restaurant_rounded, Colors.redAccent, widget.difficulty),
                       ],
                     ),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        const Text(
+                          'Berikan Rating: ',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                        ...List.generate(5, (index) {
+                          return IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(
+                              index < _userRating ? Icons.star_rounded : Icons.star_border_rounded,
+                              color: Colors.amber,
+                              size: 30,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _userRating = index + 1.0;
+                                _hasRated = true;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('⭐ Rating ${_userRating.toInt()} bintang diberikan!'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          );
+                        }),
+                        if (_hasRated)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Text(
+                              '${_userRating.toInt()}/5',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 25),
-
-                    // KARTU INFORMASI NUTRISI (Dinamis dari widget data)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -171,8 +321,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
-
-                    // PENYESUAIAN PORSI INTERAKTIF
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -204,8 +352,83 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
-
-                    // CUSTOM SEGMENTED TAB SWITCHER
+                    if (widget.ingredients.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '📋 Progress Bahan',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.save_rounded, color: Colors.green, size: 22),
+                                      onPressed: _saveProgress,
+                                      tooltip: 'Simpan Progress',
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.refresh_rounded, color: Colors.redAccent, size: 22),
+                                      onPressed: _resetChecklist,
+                                      tooltip: 'Reset Checklist',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: progressPercentage,
+                                minHeight: 8,
+                                backgroundColor: Colors.grey.shade300,
+                                color: progressPercentage == 1.0 
+                                    ? Colors.green 
+                                    : Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '$totalChecked dari $totalIngredients bahan',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                if (_isChecklistSaved)
+                                  const Text(
+                                    '💾 Tersimpan',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     Container(
                       height: 55,
                       padding: const EdgeInsets.all(6),
@@ -221,12 +444,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 25),
-
-                    // KONTEN DINAMIS BERDASARKAN TAB YANG AKTIF
                     _activeTab == 0
                         ? _buildIngredientsSection()
                         : _buildStepsSection(),
-
+                    const SizedBox(height: 30),
+                    _buildCommentsSection(),
                     const SizedBox(height: 120),
                   ],
                 ),
@@ -294,57 +516,59 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  // TAB CONTENT 1: LIST BAHAN DINAMIS
   Widget _buildIngredientsSection() {
-    return ListView.builder(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: widget.ingredients.length,
-      itemBuilder: (context, index) {
-        bool isChecked = _checkedIngredients[index];
-        return InkWell(
-          onTap: () {
-            setState(() {
-              _checkedIngredients[index] = !_checkedIngredients[index];
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-            decoration: BoxDecoration(
-              color: isChecked ? Colors.red.shade50.withOpacity(0.3) : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isChecked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  color: isChecked ? Colors.redAccent : Colors.grey.shade400,
-                  size: 22,
+    return Column(
+      children: [
+        ListView.builder(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: widget.ingredients.length,
+          itemBuilder: (context, index) {
+            bool isChecked = _checkedIngredients[index];
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _checkedIngredients[index] = !_checkedIngredients[index];
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: isChecked ? Colors.red.shade50.withOpacity(0.3) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Text(
-                    widget.ingredients[index],
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: isChecked ? FontWeight.w500 : FontWeight.w600,
-                      color: isChecked ? Colors.grey.shade400 : Colors.black87,
-                      decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+                child: Row(
+                  children: [
+                    Icon(
+                      isChecked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      color: isChecked ? Colors.redAccent : Colors.grey.shade400,
+                      size: 22,
                     ),
-                  ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Text(
+                        widget.ingredients[index],
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: isChecked ? FontWeight.w500 : FontWeight.w600,
+                          color: isChecked ? Colors.grey.shade400 : Colors.black87,
+                          decoration: isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
-  // TAB CONTENT 2: TIMELINE LANGKAH MEMASAK DINAMIS
   Widget _buildStepsSection() {
     return ListView.builder(
       shrinkWrap: true,
@@ -394,6 +618,142 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCommentsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '💬 Ulasan & Komentar',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${_comments.length} ulasan',
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  decoration: const InputDecoration(
+                    hintText: 'Tulis komentar...',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  maxLines: 2,
+                  minLines: 1,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send_rounded, color: Colors.redAccent, size: 28),
+                onPressed: _addComment,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _comments.length,
+          itemBuilder: (context, index) {
+            final comment = _comments[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade100,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: NetworkImage(comment['avatar']),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              comment['user'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (comment['rating'] != null)
+                              Row(
+                                children: [
+                                  const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                                  Text(
+                                    '${comment['rating']}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          comment['text'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          comment['time'],
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
