@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:resep_app/search_screen.dart';
 import 'recipe_detail_screen.dart';
 import 'search_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +13,61 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _currentAddress = 'Mencari lokasi...';
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation(); // Panggil saat layar pertama kali dibuka
+    Future.delayed(const Duration(seconds: 4), _autoSlideBanner);
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // 1. Cek apakah layanan lokasi aktif
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() => _currentAddress = 'GPS belum aktif');
+      return;
+    }
+
+    // 2. Cek izin lokasi
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() => _currentAddress = 'Izin lokasi ditolak');
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() => _currentAddress = 'Izin diblokir permanen');
+      return;
+    }
+
+    // 3. Ambil koordinat GPS
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+          
+      // 4. Terjemahkan ke alamat (Kota, Negara)
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude, position.longitude);
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        setState(() {
+          // Akan menampilkan format seperti "Surabaya, Indonesia"
+          _currentAddress = '${place.subAdministrativeArea}, ${place.country}'; 
+        });
+      }
+    } catch (e) {
+      setState(() => _currentAddress = 'Gagal memuat lokasi');
+    }
+  }
   // State untuk Mode Hemat Daya
   bool _isEcoMode = false;
   
@@ -124,14 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // State untuk Carousel
   int _currentBannerIndex = 0;
   final PageController _bannerController = PageController();
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-slide banner setiap 4 detik
-    Future.delayed(const Duration(seconds: 4), _autoSlideBanner);
-  }
-
+  
   void _autoSlideBanner() {
     if (mounted) {
       setState(() {
@@ -209,13 +259,31 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Lokasi Dapur', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
-            Row(
-              children: const [
-                Icon(Icons.location_on_rounded, color: Colors.redAccent, size: 16),
-                SizedBox(width: 4),
-                Text('Ngawi, Indonesia', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
-                Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black87, size: 18),
-              ],
+            
+            // Bungkus dengan GestureDetector agar bisa diklik
+            GestureDetector(
+              onTap: () {
+                // TODO: Tambahkan aksi saat lokasi diklik di sini
+                // Contoh: Munculkan modal bottom sheet untuk daftar lokasi
+                print("Pilih lokasi!");
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0), // Area klik sedikit diperbesar
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, color: Colors.redAccent, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _currentAddress,
+                        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis, // Agar teks tidak kepanjangan
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
