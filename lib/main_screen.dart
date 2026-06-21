@@ -1,11 +1,12 @@
+// lib/main_screen.dart
 import 'package:flutter/material.dart';
-
-// Pastikan semua file ini sudah ada di folder 'lib' Anda
-import 'home_screen.dart';
-import 'saved_recipes_screen.dart';
-import 'notifications_screen.dart'; // Sesuaikan nama file jika berbeda
-import 'profile_screen.dart';
-import 'create_recipe_screen.dart'; 
+import 'package:resep_app/services/auth_service.dart';
+import 'package:resep_app/login_screen.dart';
+import 'package:resep_app/home_screen.dart';
+import 'package:resep_app/saved_recipes_screen.dart';
+import 'package:resep_app/notifications_screen.dart';
+import 'package:resep_app/profile_screen.dart';
+import 'package:resep_app/create_recipe_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,30 +18,135 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Daftar halaman yang akan ditampilkan di dalam kerangka Main Screen.
-  // 💡 CATATAN: Jika tulisan nama Screen di bawah ini bergaris merah, 
-  // hapus kata 'const' di depannya.
   final List<Widget> _screens = [
     const HomeScreen(),
     const SavedRecipesScreen(),
-    const NotificationsScreen(), // Pastikan nama class-nya sesuai dengan file Anda
+    const NotificationsScreen(),
     const ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // extendBody WAJIB true agar konten background tembus ke bawah Bottom Nav
       extendBody: true,
       backgroundColor: const Color(0xFFFAFAFA),
-      
-      // IndexedStack menahan state halaman agar tidak reload saat berpindah tab
+
+      // ========== DRAWER DENGAN LOGOUT ==========
+      drawer: Drawer(
+        child: Column(
+          children: [
+            // Header Drawer
+            Container(
+              height: 180,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.redAccent.shade400, Colors.orangeAccent.shade400],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    CircleAvatar(
+                      radius: 35,
+                      backgroundImage: NetworkImage(
+                          'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=60'),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Chef Fadly Rizky',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'chef.fadly@resepnusantara.com',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Menu Drawer
+            ListTile(
+              leading: const Icon(Icons.home_rounded, color: Colors.redAccent),
+              title: const Text('Beranda'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 0);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_rounded, color: Colors.redAccent),
+              title: const Text('Koleksi Saya'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 1);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_rounded, color: Colors.redAccent),
+              title: const Text('Notifikasi'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 2);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_rounded, color: Colors.redAccent),
+              title: const Text('Profil'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _currentIndex = 3);
+              },
+            ),
+            const Divider(),
+            // ========== LOGOUT ==========
+            ListTile(
+              leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              title: const Text(
+                'Keluar',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              onTap: () async {
+                // Tutup drawer
+                Navigator.pop(context);
+                // Logout
+                await AuthService().logout();
+                // Pindah ke LoginScreen
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Versi 1.0.0',
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
 
-      // 1. TOMBOL FLOATING TENGAH (TAMBAH RESEP)
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Container(
         height: 65,
@@ -66,7 +172,6 @@ class _MainScreenState extends State<MainScreen> {
           elevation: 0,
           highlightElevation: 0,
           onPressed: () {
-            // Animasi transisi meluncur dari bawah ke atas saat membuka form tambah resep
             Navigator.push(
               context,
               PageRouteBuilder(
@@ -87,11 +192,10 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
 
-      // 2. BOTTOM NAVIGATION BAR
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         elevation: 20,
-        shape: const CircularNotchedRectangle(), // Membuat efek melengkung (notch)
+        shape: const CircularNotchedRectangle(),
         notchMargin: 10,
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
@@ -99,13 +203,9 @@ class _MainScreenState extends State<MainScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Tab Kiri
               _buildNavItem(Icons.home_rounded, 0),
               _buildNavItem(Icons.bookmark_rounded, 1),
-              
-              const SizedBox(width: 40), // Jarak kosong untuk tempat Floating Button
-              
-              // Tab Kanan
+              const SizedBox(width: 40),
               _buildNavItem(Icons.notifications_rounded, 2),
               _buildNavItem(Icons.person_rounded, 3),
             ],
@@ -115,7 +215,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Widget Bantuan untuk Membuat Ikon Navigasi yang Interaktif
   Widget _buildNavItem(IconData icon, int index) {
     bool isSelected = _currentIndex == index;
     return GestureDetector(
@@ -138,7 +237,6 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          // Titik kecil indikator di bawah ikon yang aktif
           AnimatedOpacity(
             opacity: isSelected ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 250),
