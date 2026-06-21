@@ -1,5 +1,8 @@
+// lib/login_screen.dart
 import 'package:flutter/material.dart';
-import 'main_screen.dart'; // Pastikan ini terhubung dengan main_screen.dart Anda
+import 'package:resep_app/services/auth_service.dart';
+import 'package:resep_app/main_screen.dart';
+import 'package:resep_app/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,12 +12,52 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Kontrol untuk menyembunyikan/menampilkan password
+  final AuthService _auth = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
   bool _isPasswordHidden = true;
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan password wajib diisi')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    bool success = await _auth.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    setState(() => _isLoading = false);
+
+    if (success && mounted) {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email atau password salah'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Mendapatkan tinggi layar untuk proporsi gambar yang pas
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -22,19 +65,19 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // HEADER: Gambar Estetik + Efek Gradien
+            // HEADER
             Stack(
               children: [
                 Container(
                   height: screenHeight * 0.45,
                   decoration: const BoxDecoration(
                     image: DecorationImage(
-                      image: NetworkImage('https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&auto=format&fit=crop&q=80'),
+                      image: NetworkImage(
+                          'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&auto=format&fit=crop&q=80'),
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
-                // Gradien untuk menyamarkan batas bawah gambar dengan background putih
                 Container(
                   height: screenHeight * 0.45,
                   decoration: BoxDecoration(
@@ -50,7 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                // Teks Sapaan di atas gambar
                 Positioned(
                   bottom: 40,
                   left: 30,
@@ -82,16 +124,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
 
-            // FORM AREA: Menggunakan Animasi Tween (Slide up & Fade in)
+            // FORM
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 1000),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {
                 return Transform.translate(
-                  offset: Offset(0, 50 * (1 - value)), // Meluncur dari bawah 50px
+                  offset: Offset(0, 50 * (1 - value)),
                   child: Opacity(
-                    opacity: value, // Transparansi memudar masuk
+                    opacity: value,
                     child: child,
                   ),
                 );
@@ -101,49 +143,59 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
-
-                    // INPUT EMAIL
+                    // Email
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
-                          BoxShadow(color: Colors.red.shade100.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                          BoxShadow(
+                              color: Colors.red.shade100.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10)),
                         ],
                       ),
                       child: TextField(
+                        controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           hintText: 'Email Address',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
-                          prefixIcon: const Icon(Icons.alternate_email, color: Colors.redAccent),
+                          prefixIcon:
+                              const Icon(Icons.alternate_email, color: Colors.redAccent),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 20),
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // INPUT PASSWORD BERFUNGSI (Bisa diintip)
+                    // Password
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
-                          BoxShadow(color: Colors.red.shade100.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                          BoxShadow(
+                              color: Colors.red.shade100.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10)),
                         ],
                       ),
                       child: TextField(
+                        controller: _passwordController,
                         obscureText: _isPasswordHidden,
                         decoration: InputDecoration(
                           hintText: 'Password',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, color: Colors.redAccent),
+                          prefixIcon:
+                              const Icon(Icons.lock_outline_rounded, color: Colors.redAccent),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isPasswordHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              _isPasswordHidden
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
                               color: Colors.grey.shade400,
                             ),
                             onPressed: () {
@@ -156,21 +208,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 15),
-
-                    // LUPA SANDI
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Menuju halaman pemulihan sandi...'))),
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Fitur lupa sandi belum tersedia'))),
                         child: Text(
                           'Lupa Sandi?',
-                          style: TextStyle(color: Colors.redAccent.shade400, fontWeight: FontWeight.bold, fontSize: 14),
+                          style: TextStyle(
+                              color: Colors.redAccent.shade400,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
                         ),
                       ),
                     ),
                     const SizedBox(height: 35),
-
-                    // TOMBOL LOGIN UTAMA DENGAN GRADIENT
+                    // Tombol Login
                     Container(
                       width: double.infinity,
                       height: 60,
@@ -182,46 +235,54 @@ class _LoginScreenState extends State<LoginScreen> {
                           end: Alignment.centerRight,
                         ),
                         boxShadow: [
-                          BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 8)),
+                          BoxShadow(
+                              color: Colors.redAccent.withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8)),
                         ],
                       ),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
                         ),
-                        onPressed: () {
-                          // Navigasi yang anggun ke Main Screen
-                          Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
-                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                return FadeTransition(opacity: animation, child: child);
-                              },
-                            ),
-                          );
-                        },
-                        child: const Text('Masuk ke Dapur', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1)),
+                        onPressed: _isLoading ? null : _login,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Masuk ke Dapur',
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 1),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 40),
-
-                    // SOCIAL LOGIN DIVIDER
+                    // Social Divider
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 15),
-                          child: Text('Atau masuk dengan', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                          child: Text('Atau masuk dengan',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
                         ),
                         Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
                       ],
                     ),
                     const SizedBox(height: 25),
-
-                    // SOCIAL BUTTONS ESTETIK
+                    // Social Buttons (placeholder)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -233,17 +294,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 40),
-
-                    // REGISTER TEXT
+                    // Register
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Koki baru di sini? ', style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
+                        Text('Koki baru di sini? ',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
                         GestureDetector(
-                          onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membuka halaman Pendaftaran...'))),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                            );
+                          },
                           child: Text(
                             'Daftar Sekarang',
-                            style: TextStyle(color: Colors.redAccent.shade400, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: TextStyle(
+                                color: Colors.redAccent.shade400,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15),
                           ),
                         ),
                       ],
@@ -259,11 +328,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Widget custom untuk tombol sosial media
   Widget _buildSocialButton(IconData icon, Color color, BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Integrasi pihak ketiga segera hadir!'))),
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Integrasi pihak ketiga segera hadir!'))),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
