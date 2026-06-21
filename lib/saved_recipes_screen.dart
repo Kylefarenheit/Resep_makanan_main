@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'recipe_detail_screen.dart'; // Pastikan ini terhubung agar bisa di-klik
 
 class SavedRecipesScreen extends StatefulWidget {
-  const SavedRecipesScreen({super.key});v
+  const SavedRecipesScreen({super.key});
 
   @override
   State<SavedRecipesScreen> createState() => _SavedRecipesScreenState();
